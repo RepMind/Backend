@@ -1,0 +1,43 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model logs {
+  log_id       Int       @id @default(autoincrement())
+  workout_id   Int       @default(autoincrement())
+  completed_at DateTime? @db.Timestamp(6)
+  notes        String?
+  workouts     workouts  @relation(fields: [workout_id], references: [workout_id], onDelete: NoAction, onUpdate: NoAction, map: "workout_id")
+}
+
+model user_info {
+  id               String     @id(map: "workout_plans_pkey") @default(dbgenerated("nextval('workout_plans_plan_id_seq'::regclass)")) @db.VarChar(20)
+  age              Int
+  height_cm        Int?
+  weight_kg        Int?
+  gender           String?    @db.VarChar(10)
+  goal             String?    @db.VarChar(50)
+  experience_level String?    @db.VarChar(20)
+  limitations      String?
+  available_days   Int[]
+  created_at       DateTime?  @db.Timestamp(6)
+  updated_at       DateTime?  @db.Timestamp(6)
+  user_id          String     @unique(map: "user_id")
+  workouts         workouts[]
+}
+
+model workouts {
+  workout_id    Int        @id @default(autoincrement())
+  plan_id       String?    @db.VarChar(20)
+  exercise_name String?    @db.VarChar(100)
+  sets          Int?
+  reps          String?    @db.VarChar(50)
+  muscle_group  String?    @db.VarChar(50)
+  logs          logs[]
+  user_info     user_info? @relation(fields: [plan_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "plan_id")
+}
