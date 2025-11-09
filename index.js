@@ -9,6 +9,7 @@ const PORT = 3000
 //get, post, put, delete
 app.use(express.json())
 
+//Adds ChatGPT generated workout plan into database table
 async function createWorkout(plan_id, gpt_plan) {
     console.log(plan_id, "Create Workout called") 
     const plan = JSON.parse(gpt_plan)
@@ -24,6 +25,7 @@ async function createWorkout(plan_id, gpt_plan) {
     }
 }
 
+//Calls ChatGPT
 async function gptHandler(prompt) {
     try {
     const response = await axios.post(
@@ -50,8 +52,7 @@ async function gptHandler(prompt) {
     }
 }    
 
-//Create new user
-
+//Create new user entry in database table and generate workout plan
 app.post('/', async(req, res) => {
     console.log(req.body)
     try{
