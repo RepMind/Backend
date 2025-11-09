@@ -9,6 +9,110 @@ const PORT = 3000
 //get, post, put, delete
 app.use(express.json())
 
+async function generateProgressReport(user_id) {
+    try {
+      // Fetch the user, their workouts, and logs
+      const userData = await prisma.user_info.findUnique({
+        where: { user_id },
+        include: {
+          workouts: {
+            include: {
+              logs: true,
+            },
+          },
+        },
+      });
+  
+      if (!userData) {
+        throw new Error(`User with ID ${user_id} not found.`);
+      }
+  
+      // Build a text prompt for GPT
+      let prompt = `
+        You are a professional fitness coach generating a personalized progress report.
+        
+        
+        User Info:
+        - Age: ${userData.age}
+        - Gender: ${userData.gender || "unspecified"}
+        - Goal: ${userData.goal || "unspecified"}
+        - Experience Level: ${userData.experience_level || "unspecified"}
+        
+        
+        Below are their logged workouts and personal notes:
+        `;
+  
+      for (const workout of userData.workouts) {
+        prompt += `\nWorkout: ${workout.workout_name || "Unnamed Workout"}\n`;
+  
+        if (workout.logs.length === 0) {
+          prompt += "  • No logs recorded yet.\n";
+          continue;
+        }
+  
+        for (const log of workout.logs) {
+          prompt += `  • Date: ${new Date(log.completed_at).toLocaleDateString()} — ${
+            log.notes || "No notes provided"
+          }\n`;
+        }
+      }
+  
+      prompt += `
+        Based on this data, provide a detailed summary of the user's progress.
+        Highlight their consistency, improvements, and areas that need attention.
+        Conclude with 2-3 personalized recommendations for next week.
+        `;
+  
+      // Call GPT with the prompt
+      const report = await gptHandler(prompt);
+  
+      //  Return GPT’s response
+      return report;
+    } catch (error) {
+      console.error("Error generating progress report:", error);
+      throw error;
+    }
+  }
+  module.exports = { generateProgressReport };  
+
+//Generates progress summary
+async function gptReport(prompt) {
+    try {
+    const response = await axios.post(
+    'https://api.openai.com/v1/chat/completions',
+    {
+        model: "gpt-4o-mini",
+        messages: [
+        { role: "system", content: "Summarize the workout including reps and sets using the notes from logs"},
+        { role: "user", content: prompt }
+        ]
+    },
+    {
+        headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
+        }
+    });
+    // Return the generated text
+        return response.data.choices[0].message.content;
+    } 
+        catch (error) {
+            console.error("Error calling OpenAI:", error.response?.data || error.message);
+        throw error;
+    }
+}    
+
+//Logging the workout and notes 
+app.post("/log",async(req, res) => {
+    await prisma.logs.create({
+        data: {
+            user_id: req.data.user_id,
+            workout_id: req.data.workout_id,
+            notes: req.data.notes,
+        }
+    })
+})
+
 //Adds ChatGPT generated workout plan into database table
 async function createWorkout(plan_id, gpt_plan) {
     console.log(plan_id, "Create Workout called") 
@@ -25,7 +129,7 @@ async function createWorkout(plan_id, gpt_plan) {
     }
 }
 
-//Calls ChatGPT
+//Calls ChatGPT to generate workout plan
 async function gptHandler(prompt) {
     try {
     const response = await axios.post(

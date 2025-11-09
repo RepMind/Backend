@@ -8,11 +8,13 @@ datasource db {
 }
 
 model logs {
-  log_id       Int       @id @default(autoincrement())
-  workout_id   Int       @default(autoincrement())
-  completed_at DateTime? @db.Timestamp(6)
+  log_id       Int        @id @default(autoincrement())
+  workout_id   Int
+  completed_at DateTime?  @db.Timestamp(6)
   notes        String?
-  workouts     workouts  @relation(fields: [workout_id], references: [workout_id], onDelete: NoAction, onUpdate: NoAction, map: "workout_id")
+  user_id      String?
+  user_info    user_info? @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "user_id")
+  workouts     workouts   @relation(fields: [workout_id], references: [workout_id], onDelete: NoAction, onUpdate: NoAction, map: "workout_id")
 }
 
 model user_info {
@@ -28,6 +30,7 @@ model user_info {
   created_at       DateTime?  @db.Timestamp(6)
   updated_at       DateTime?  @db.Timestamp(6)
   user_id          String     @unique(map: "user_id")
+  logs             logs[]
   workouts         workouts[]
 }
 
