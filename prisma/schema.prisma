@@ -36,6 +36,7 @@ model workouts {
   plan_id      String?    @db.VarChar(20)
   workout_name String?    @db.VarChar(50)
   exercise     Json?
+  days         Int[]
   logs         logs[]
-  user_info    user_info? @relation(fields: [plan_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "plan_id")
+  user_info    user_info? @relation(fields: [plan_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "plan_id")
 }

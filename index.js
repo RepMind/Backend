@@ -9,6 +9,21 @@ const PORT = 3000
 //get, post, put, delete
 app.use(express.json())
 
+async function createWorkout(plan_id, gpt_plan) {
+    console.log(plan_id, "Create Workout called") 
+    const plan = JSON.parse(gpt_plan)
+    for (const workout of plan) {
+        await prisma.workouts.create({
+            data: {
+                plan_id: plan_id,
+                workout_name: workout.workout_name,
+                days: workout.days,
+                exercise: workout.exercises,
+            },
+        });
+    }
+}
+
 async function gptHandler(prompt) {
     try {
     const response = await axios.post(
@@ -16,7 +31,7 @@ async function gptHandler(prompt) {
     {
         model: "gpt-4o-mini",
         messages: [
-        { role: "system", content: "You are a helpful fitness trainer. Return the muscle group for the workout in the format (Day/Muscle Group) followed by the exercises in json format: exercise name (varchar), sets (int), reps (varchar)"},
+        { role: "system", content: "You are a helpful fitness trainer. Generate a workout plan for a client based on their profile. Return the plan in strict JSON format with the following structure:[{'workout_name': 'push/pull/legs/etc', 'days': [0,1,2], 'exercises':[{'exercise_name': 'string','sets': integer,'reps': 'string','muscle_group': 'string'}]}]. Workout_name: the type of workout (Push, Pull, Legs, Full Body, etc.). Days: an array of integers representing the days of the week the client should perform this workout (0 = Sunday, 6 = Saturday). Exercises: a list of exercises for that workout including the number of sets, reps, and the primary muscle group targeted. Use the client’s information: age, gender, height, weight, goal, experience level, available days, and limitations to generate exercises. Avoid exercises that could worsen any limitations. Do not include any nonessential text before or after the JSON. Ensure the JSON is valid and can be parsed directly."},
         { role: "user", content: prompt }
         ]
     },
@@ -61,6 +76,7 @@ app.post('/', async(req, res) => {
                         number of sets, number of reps, and which muscle group it targets.`
         const gpt_response = await gptHandler(prompt)
         console.log(gpt_response)
+        createWorkout(req.body.user_id, gpt_response)
 
     }
     catch (error) {
