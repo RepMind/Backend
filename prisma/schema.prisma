@@ -24,7 +24,7 @@ model user_info {
   goal             String?    @db.VarChar(50)
   experience_level String?    @db.VarChar(20)
   limitations      String?
-  available_days   Int[]
+  available_days   String[]   @db.VarChar
   created_at       DateTime?  @db.Timestamp(6)
   updated_at       DateTime?  @db.Timestamp(6)
   user_id          String     @unique(map: "user_id")
@@ -32,12 +32,10 @@ model user_info {
 }
 
 model workouts {
-  workout_id    Int        @id @default(autoincrement())
-  plan_id       String?    @db.VarChar(20)
-  exercise_name String?    @db.VarChar(100)
-  sets          Int?
-  reps          String?    @db.VarChar(50)
-  muscle_group  String?    @db.VarChar(50)
-  logs          logs[]
-  user_info     user_info? @relation(fields: [plan_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "plan_id")
+  workout_id   Int        @id @default(autoincrement())
+  plan_id      String?    @db.VarChar(20)
+  workout_name String?    @db.VarChar(50)
+  exercise     Json?
+  logs         logs[]
+  user_info    user_info? @relation(fields: [plan_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "plan_id")
 }

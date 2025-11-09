@@ -1,5 +1,6 @@
 const express = require('express') // import statement
 const prisma = require('./prisma/client')
+const axios = require('axios')
 
 const app = express();
 const PORT = 3000
@@ -15,7 +16,7 @@ async function gptHandler(prompt) {
     {
         model: "gpt-4o-mini",
         messages: [
-        { role: "system", content: "You are a helpful fitness trainer." },
+        { role: "system", content: "You are a helpful fitness trainer. Return the day and muscle group for the workout followed by the exercises in json format: exercise name (varchar), sets (int), reps (varchar)"},
         { role: "user", content: prompt }
         ]
     },
@@ -53,6 +54,14 @@ app.post('/', async(req, res) => {
             },
         });
         res.status(201).json(result);
+        const prompt = `The client is a ${req.body.age} year old ${req.body.gender} ${req.body.height_cm} cm tall 
+                        weighing ${req.body.weight_kg} kgs. They have a goal of ${req.body.goal} with ${req.body.experience_level} 
+                        experience, available to work out on ${req.body.available_days} weekly, and have the following limitations: 
+                        ${req.body.limitations}. Generate a workout plan that suits them. Return listing each exerise by name, 
+                        number of sets, number of reps, and which muscle group it targets.`
+        const gpt_response = await gptHandler(prompt)
+        console.log(gpt_response)
+
     }
     catch (error) {
         res.status(400).json({error: error.message});
