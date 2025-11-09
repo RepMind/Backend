@@ -9,7 +9,7 @@ const PORT = 3000
 //get, post, put, delete
 app.use(express.json())
 
-async function generateProgressReport(user_id) {
+async function gptProgressReport(user_id) {
     try {
       // Fetch the user, their workouts, and logs
       const userData = await prisma.user_info.findUnique({
@@ -73,34 +73,8 @@ async function generateProgressReport(user_id) {
       throw error;
     }
   }
-  module.exports = { generateProgressReport };  
+  module.exports = { gptProgressReport };  
 
-//Generates progress summary
-async function gptReport(prompt) {
-    try {
-    const response = await axios.post(
-    'https://api.openai.com/v1/chat/completions',
-    {
-        model: "gpt-4o-mini",
-        messages: [
-        { role: "system", content: "Summarize the workout including reps and sets using the notes from logs"},
-        { role: "user", content: prompt }
-        ]
-    },
-    {
-        headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
-        }
-    });
-    // Return the generated text
-        return response.data.choices[0].message.content;
-    } 
-        catch (error) {
-            console.error("Error calling OpenAI:", error.response?.data || error.message);
-        throw error;
-    }
-}    
 
 //Logging the workout and notes 
 app.post("/log",async(req, res) => {
