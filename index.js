@@ -16,7 +16,7 @@ async function gptHandler(prompt) {
     {
         model: "gpt-4o-mini",
         messages: [
-        { role: "system", content: "You are a helpful fitness trainer. Return the day and muscle group for the workout followed by the exercises in json format: exercise name (varchar), sets (int), reps (varchar)"},
+        { role: "system", content: "You are a helpful fitness trainer. Return the muscle group for the workout in the format (Day/Muscle Group) followed by the exercises in json format: exercise name (varchar), sets (int), reps (varchar)"},
         { role: "user", content: prompt }
         ]
     },
