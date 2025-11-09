@@ -1,13 +1,47 @@
 const express = require('express') // import statement
 const prisma = require('./prisma/client')
 const axios = require('axios')
-
+const cors = require('cors')
 const app = express();
-const PORT = 3000
+const PORT = 3001
 
 //define endpoints
 //get, post, put, delete
 app.use(express.json())
+app.use(cors())
+
+async function getLogsByUserId(user_id) {
+    try {
+      const logs = await prisma.logs.findMany({
+        where: { 
+          user_id: user_id, // plan_id in workouts matches user_id in user_info
+        },
+      });
+  
+      return logs;
+    } catch (error) {
+      console.error("Error fetching user logs:", error);
+      throw new Error("Failed to fetch logs");
+    }
+  }
+
+// Get route for user workouts
+app.get('/user/:user_id/logs', async (req, res) => {
+    const { user_id } = req.params;
+    try {
+      const logs = await getLogsByUserId(user_id);
+      if (logs.length === 0) {
+        return res.status(404).json({ message: "No logs found for this user" });
+      }
+      res.status(200).json({
+        user_id,
+        total_logs: logs.length,
+        logs,
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 
 // Get all workouts for a specific user
 async function getWorkoutsByUserId(user_id) {
@@ -65,6 +99,7 @@ function createProgressPrompt(userData) {
     return prompt;
   }
 
+
 app.get('/api/progress/:user_id', async (req, res) => {
 try {
     const userData = await prisma.user_info.findUnique({
@@ -120,30 +155,47 @@ async function gptReport(prompt) {
 
 //Logging the workout and notes 
 app.post("/log",async(req, res) => {
+    console.log(req.body)
     await prisma.logs.create({
         data: {
-            user_id: req.data.user_id,
-            workout_id: req.data.workout_id,
-            notes: req.data.notes,
+            user_id: req.body.user_id,
+            workout_id: req.body.workout_id,
+            notes: req.body.notes,
         }
     })
 })
 
 //Adds ChatGPT generated workout plan into database table
+// Adds ChatGPT generated workout plan into database table
 async function createWorkout(plan_id, gpt_plan) {
-    console.log(plan_id, "Create Workout called") 
-    const plan = JSON.parse(gpt_plan)
-    for (const workout of plan) {
-        await prisma.workouts.create({
-            data: {
-                plan_id: plan_id,
-                workout_name: workout.workout_name,
-                days: workout.days,
-                exercise: workout.exercises,
-            },
-        });
+    console.log(plan_id, "Create Workout called");
+
+    // 🛠️ Clean GPT output (remove extra whitespace and fix incomplete JSON)
+    let cleanPlan = gpt_plan.trim();
+
+    // Attempt to remove any extra text after the last closing bracket
+    const endIndex = cleanPlan.lastIndexOf(']');
+    if (endIndex !== -1) cleanPlan = cleanPlan.slice(0, endIndex + 1);
+
+    try {
+        const plan = JSON.parse(cleanPlan);
+
+        for (const workout of plan) {
+            await prisma.workouts.create({
+                data: {
+                    plan_id: plan_id,
+                    workout_name: workout.workout_name,
+                    days: workout.days,
+                    exercise: workout.exercises,
+                },
+            });
+        }
+    } catch (error) {
+        console.error("❌ Invalid JSON from GPT:", error.message);
+        console.error("GPT plan string:", cleanPlan);
     }
 }
+
 
 //Calls ChatGPT to generate workout plan
 async function gptHandler(prompt) {
@@ -173,9 +225,9 @@ async function gptHandler(prompt) {
 }    
 
 //Create new user entry in database table and generate workout plan
-app.post('/', async(req, res) => {
+app.post('/', async (req, res) => {
     console.log(req.body)
-    try{
+    try {
         const result = await prisma.user_info.create({
             data: {
                 user_id: req.body.user_id,
@@ -189,21 +241,31 @@ app.post('/', async(req, res) => {
                 available_days: req.body.available_days,
             },
         });
+
+        // ✅ Send response immediately
         res.status(201).json(result);
+
+        // 🔹 Do GPT stuff asynchronously after sending response
         const prompt = `The client is a ${req.body.age} year old ${req.body.gender} ${req.body.height_cm} cm tall 
                         weighing ${req.body.weight_kg} kgs. They have a goal of ${req.body.goal} with ${req.body.experience_level} 
                         experience, available to work out on ${req.body.available_days} weekly, and have the following limitations: 
                         ${req.body.limitations}. Generate a workout plan that suits them. Return listing each exerise by name, 
-                        number of sets, number of reps, and which muscle group it targets.`
-        const gpt_response = await gptHandler(prompt)
-        console.log(gpt_response)
-        createWorkout(req.body.user_id, gpt_response)
+                        number of sets, number of reps, and which muscle group it targets.`;
 
+        let gpt_response = await gptHandler(prompt);
+        gpt_response += "]"
+        console.log("GPT Plan:", gpt_response);
+
+        await createWorkout(req.body.user_id, gpt_response);
+
+    } catch (error) {
+        console.error("Error in POST /:", error.message);
+        // ❌ Only send error response if it hasn't been sent yet
+        if (!res.headersSent) {
+            res.status(400).json({ error: error.message });
+        }
     }
-    catch (error) {
-        res.status(400).json({error: error.message});
-    }
-})
+});
 
 app.get('/', (req, res) => {
     res.status(200).json("200 ok successful response")
