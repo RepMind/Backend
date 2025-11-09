@@ -253,7 +253,7 @@ app.post('/', async (req, res) => {
                         number of sets, number of reps, and which muscle group it targets.`;
 
         let gpt_response = await gptHandler(prompt);
-        //gpt_response += "]"
+        gpt_response += "]"
         console.log("GPT Plan:", gpt_response);
 
         await createWorkout(req.body.user_id, gpt_response);
